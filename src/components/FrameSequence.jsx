@@ -45,7 +45,7 @@ export default function FrameSequence() {
     if (!img) return;
 
     // Supersample at least 2x (or native display DPI if higher) for 4K clarity
-    const dpr = Math.max(window.devicePixelRatio || 1, 2);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const winW = window.innerWidth;
     const winH = window.innerHeight;
 
