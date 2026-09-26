@@ -1,0 +1,105 @@
+/* IMMERSIVE SCROLL CONTAINER */
+.immersive-container {
+  position: relative;
+  width: 100%;
+  height: 600vh; /* Smooth, generous scroll travel for 300 frames */
+  background-color: #030508;
+}
+
+/* FIXED FULL-SCREEN CANVAS PIN */
+.canvas-pin {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* HIGH DEFINITION 4K RENDERING PIPELINE */
+.cinema-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: high-quality;
+  /* Enhanced contrast, deep inky blacks, and vivid neon green clarity */
+  filter: contrast(1.05) brightness(1.02) saturate(1.08);
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  will-change: contents;
+}
+
+/* ULTRA-SUBTLE VIGNETTE TO PRESERVE FRAME BRILLIANCE */
+.cinematic-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at center,
+    transparent 65%,
+    rgba(2, 4, 7, 0.25) 88%,
+    rgba(2, 4, 7, 0.6) 100%
+  );
+}
+
+/* MINIMAL FLOATING SCROLL INDICATOR */
+.scroll-hint-wrapper {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.85;
+  transition: opacity 0.4s ease;
+}
+
+.scroll-arrow-line {
+  width: 2px;
+  height: 26px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+}
+
+.scroll-arrow-dot {
+  width: 100%;
+  height: 8px;
+  background: #00ff88;
+  box-shadow: 0 0 8px #00ff88;
+  position: absolute;
+  top: 0;
+  border-radius: 2px;
+  animation: scroll-drop 1.8s infinite cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+@keyframes scroll-drop {
+  0% {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(26px);
+    opacity: 0;
+  }
+}
+
+.scroll-hint-text {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
+}
