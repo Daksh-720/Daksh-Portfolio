@@ -1,997 +1,281 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import gsap from 'gsap';
 
-
-
-
-class OmnitrixAudioEngine {
-  constructor() {
-    this.ctx = null;
-    this.muted = false;
-  }
-
-  init() {
-    if (!this.ctx) {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      this.ctx = new AudioCtx();
-    }
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
-    }
-  }
-
-  playDialTick() {
-    if (this.muted) return;
-    this.init();
-    const t = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    const filter = this.ctx.createBiquadFilter();
-
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(1200, t);
-    osc.frequency.exponentialRampToValueAtTime(350, t + 0.04);
-
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(2200, t);
-    filter.Q.setValueAtTime(3, t);
-
-    gain.gain.setValueAtTime(0.2, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
-
-    osc.connect(filter);
-    filter.connect(gain);
-    gain.connect(this.ctx.destination);
-
-    osc.start(t);
-    osc.stop(t + 0.05);
-  }
-
-  playPopUp() {
-    if (this.muted) return;
-    this.init();
-    const t = this.ctx.currentTime;
-    
-    // Low mechanical whoosh
-    const osc1 = this.ctx.createOscillator();
-    const gain1 = this.ctx.createGain();
-    osc1.type = 'sine';
-    osc1.frequency.setValueAtTime(160, t);
-    osc1.frequency.exponentialRampToValueAtTime(480, t + 0.28);
-    gain1.gain.setValueAtTime(0.3, t);
-    gain1.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
-
-    osc1.connect(gain1);
-    gain1.connect(this.ctx.destination);
-    osc1.start(t);
-    osc1.stop(t + 0.33);
-
-    // High mechanical alien latch click
-    const osc2 = this.ctx.createOscillator();
-    const gain2 = this.ctx.createGain();
-    osc2.type = 'square';
-    osc2.frequency.setValueAtTime(800, t + 0.18);
-    osc2.frequency.exponentialRampToValueAtTime(1600, t + 0.28);
-    gain2.gain.setValueAtTime(0.12, t + 0.18);
-    gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-
-    osc2.connect(gain2);
-    gain2.connect(this.ctx.destination);
-    osc2.start(t + 0.18);
-    osc2.stop(t + 0.36);
-  }
-
-  playTransformationSlam() {
-    if (this.muted) return;
-    this.init();
-    const t = this.ctx.currentTime;
-
-    // Sub-bass impact
-    const sub = this.ctx.createOscillator();
-    const subGain = this.ctx.createGain();
-    sub.type = 'sine';
-    sub.frequency.setValueAtTime(180, t);
-    sub.frequency.exponentialRampToValueAtTime(32, t + 0.7);
-    subGain.gain.setValueAtTime(0.8, t);
-    subGain.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
-    sub.connect(subGain);
-    subGain.connect(this.ctx.destination);
-    sub.start(t);
-    sub.stop(t + 0.85);
-
-    // Energy laser chirp / alien surge
-    const chirp = this.ctx.createOscillator();
-    const chirpGain = this.ctx.createGain();
-    chirp.type = 'sawtooth';
-    chirp.frequency.setValueAtTime(2600, t);
-    chirp.frequency.exponentialRampToValueAtTime(140, t + 0.45);
-    chirpGain.gain.setValueAtTime(0.35, t);
-    chirpGain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
-    chirp.connect(chirpGain);
-    chirpGain.connect(this.ctx.destination);
-    chirp.start(t);
-    chirp.stop(t + 0.52);
-
-    // Sci-fi high frequency plasma explosion
-    const noiseBuffer = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.4, this.ctx.sampleRate);
-    const output = noiseBuffer.getChannelData(0);
-    for (let i = 0; i < noiseBuffer.length; i++) {
-      output[i] = Math.random() * 2 - 1;
-    }
-    const whiteNoise = this.ctx.createBufferSource();
-    whiteNoise.buffer = noiseBuffer;
-    const noiseFilter = this.ctx.createBiquadFilter();
-    noiseFilter.type = 'bandpass';
-    noiseFilter.frequency.setValueAtTime(3400, t);
-    noiseFilter.Q.setValueAtTime(2.5, t);
-    const noiseGain = this.ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.25, t);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
-
-    whiteNoise.connect(noiseFilter);
-    noiseFilter.connect(noiseGain);
-    noiseGain.connect(this.ctx.destination);
-    whiteNoise.start(t);
-    whiteNoise.stop(t + 0.42);
-  }
-
-  playAlarmBeep() {
-    if (this.muted) return;
-    this.init();
-    const t = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(880, t);
-    gain.gain.setValueAtTime(0.18, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start(t);
-    osc.stop(t + 0.16);
-  }
-}
-
-const audioFX = new OmnitrixAudioEngine();
-
-const DialPlasmaShader = {
-  uniforms: {
-    uTime: { value: 0 },
-    uColorMode: { value: 0.0 }, // 0: Green, 1: Red (Timeout/Albedo), 2: Yellow/Orange (Self-Destruct)
-    uIntensity: { value: 1.6 },
-    uFlicker: { value: 1.0 }
-  },
-  vertexShader: `
-    varying vec2 vUv;
-    varying vec3 vPosition;
-    void main() {
-      vUv = uv;
-      vPosition = position;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-  `,
-  fragmentShader: `
-    uniform float uTime;
-    uniform float uColorMode;
-    uniform float uIntensity;
-    uniform float uFlicker;
-    varying vec2 vUv;
-
-    // Simplex/Perlin noise approximations
-    vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-    vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-    vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
-
-    float snoise(vec2 v) {
-      const vec4 C = vec4(0.211324865405187,  // (3.0-sqrt(3.0))/6.0
-                          0.366025403784439,  // 0.5*(sqrt(3.0)-1.0)
-                         -0.577350269189626,  // -1.0 + 2.0 * C.x
-                          0.024390243902439); // 1.0 / 41.0
-      vec2 i  = floor(v + dot(v, C.yy) );
-      vec2 x0 = v -   i + dot(i, C.xx);
-      vec2 i1;
-      i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-      vec4 x12 = x0.xyxy + C.xxzz;
-      x12.xy -= i1;
-      i = mod289(i);
-      vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
-            + i.x + vec3(0.0, i1.x, 1.0 ));
-      vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
-      m = m*m ;
-      m = m*m ;
-      vec3 x = 2.0 * fract(p * C.www) - 1.0;
-      vec3 h = abs(x) - 0.5;
-      vec3 ox = floor(x + 0.5);
-      vec3 a0 = x - ox;
-      m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
-      vec3 g;
-      g.x  = a0.x  * x0.x  + h.x  * x0.y;
-      g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-      return 130.0 * dot(m, g);
-    }
-
-    // Fractal Brownian Motion for turbulent filaments
-    float fbm(vec2 p) {
-      float f = 0.0;
-      float w = 0.5;
-      for (int i = 0; i < 5; i++) {
-        f += w * snoise(p);
-        p *= 2.12;
-        w *= 0.5;
-      }
-      return f;
-    }
-
-    // Voronoi/cellular pattern for plasma webs
-    float voronoi(vec2 p) {
-      vec2 n = floor(p);
-      vec2 f = fract(p);
-      float md = 5.0;
-      for (int j = -1; j <= 1; j++) {
-        for (int i = -1; i <= 1; i++) {
-          vec2 g = vec2(float(i), float(j));
-          vec2 o = mod289(n + g) * 0.15;
-          vec2 r = g - f + sin(o * 6.28 + uTime * 2.5) * 0.5;
-          float d = dot(r, r);
-          if (d < md) md = d;
-        }
-      }
-      return sqrt(md);
-    }
-
-    void main() {
-      vec2 uv = vUv * 2.0 - 1.0;
-      float r = length(uv);
-
-      // Discard outside unit circle
-      if (r > 1.0) discard;
-
-      // Hourglass Mask Formula: 
-      // Ben 10 emblem has top and bottom triangles/cones opening outwards.
-      // Left and right regions are solid black brackets.
-      float angle = abs(atan(uv.x, uv.y)); // Angle from vertical axis (0 to PI)
-      float coneAngle = 0.82; // roughly ~47 degrees cone
-      
-      // Determine if pixel is inside hourglass or flanking wings
-      bool isHourglass = (angle < coneAngle) || (angle > (3.14159 - coneAngle));
-      // Pinch center slightly for genuine Omnitrix curvature
-      if (abs(uv.y) < 0.12 && abs(uv.x) > 0.08) {
-        isHourglass = false;
-      }
-
-      if (!isHourglass) {
-        // Black flanking casing inside dial with subtle metallic carbon sheen
-        vec3 darkShield = vec3(0.04, 0.04, 0.04);
-        float edgeGlow = smoothstep(0.0, 0.06, min(abs(angle - coneAngle), abs(angle - (3.14159 - coneAngle))));
-        gl_FragColor = vec4(darkShield * (1.0 - edgeGlow * 0.4), 1.0);
-        return;
-      }
-
-      // Inside Hourglass: Generate crackling lightning nebula plasma
-      vec2 p = uv * 3.8;
-      float t = uTime * 1.8;
-      
-      float n1 = fbm(p + vec2(t * 0.4, -t * 0.3));
-      float n2 = fbm(p * 2.2 - vec2(n1 * 1.5, t * 0.7));
-      float v = voronoi(p * 2.0 + vec2(n2 * 0.8, t * 0.5));
-
-      // Electric lightning vein effect
-      float lightning = abs(n2);
-      lightning = pow(0.09 / (lightning + 0.04), 1.4);
-
-      // Organic electric cell filament web
-      float web = pow(1.0 - v, 3.2) * 2.4;
-
-      // Deep energy core glow
-      float centerGlow = (1.0 - r * 0.85);
-
-      float energy = (lightning * 0.6 + web * 0.7 + centerGlow * 0.9 + n1 * 0.3) * uIntensity * uFlicker;
-
-      // Color scheme selection
-      vec3 coreColor;
-      vec3 rimColor;
-
-      if (uColorMode < 0.5) {
-        // Classic Ben 10 Neon Omnitrix Green
-        coreColor = vec3(0.85, 1.0, 0.5);
-        rimColor  = vec3(0.1, 0.95, 0.15);
-      } else if (uColorMode < 1.5) {
-        // Albedo / Timeout Red
-        coreColor = vec3(1.0, 0.8, 0.7);
-        rimColor  = vec3(1.0, 0.05, 0.1);
-      } else {
-        // Self-Destruct Orange / Yellow
-        coreColor = vec3(1.0, 0.95, 0.6);
-        rimColor  = vec3(1.0, 0.45, 0.0);
-      }
-
-      vec3 finalColor = mix(rimColor, coreColor, clamp(energy * 0.5, 0.0, 1.0)) * energy;
-      
-      // Intense hot white core where lightning peaks
-      if (energy > 2.2) {
-        finalColor += vec3(0.7, 0.8, 0.7) * (energy - 2.2);
-      }
-
-      gl_FragColor = vec4(finalColor, 1.0);
-    }
-  `
-};
-
-function createDakshBadgeTexture(text = "Daksh", theme = "green") {
-  const THREE = window.THREE;
-  if (!THREE) return null;
-  const canvas = document.createElement('canvas');
-  canvas.width = 1024;
-  canvas.height = 256;
-  const ctx = canvas.getContext('2d');
-
-  // Background deep dark green / carbon texture
-  ctx.fillStyle = '#061309';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // Subtle carbon-fiber crosshatch
-  ctx.strokeStyle = '#0c2211';
-  ctx.lineWidth = 2;
-  for (let x = 0; x < canvas.width; x += 16) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x + 256, 256);
-    ctx.stroke();
-  }
-
-  // Futuristic tech borders
-  ctx.strokeStyle = theme === 'red' ? '#ff3344' : theme === 'orange' ? '#ff8800' : '#2aff4b';
-  ctx.lineWidth = 8;
-  ctx.strokeRect(16, 16, canvas.width - 32, canvas.height - 32);
-
-  // Inner glow line
-  ctx.strokeStyle = theme === 'red' ? 'rgba(255, 50, 70, 0.4)' : 'rgba(42, 255, 75, 0.4)';
-  ctx.lineWidth = 4;
-  ctx.strokeRect(28, 28, canvas.width - 56, canvas.height - 56);
-
-  // Glowing Text
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.font = '900 120px "Montserrat", "Segoe UI", sans-serif';
-
-  // Text shadow / bloom
-  ctx.shadowColor = theme === 'red' ? '#ff2233' : theme === 'orange' ? '#ffa500' : '#39ff14';
-  ctx.shadowBlur = 35;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText(text.toUpperCase(), canvas.width / 2, canvas.height / 2);
-
-  // Second pass for razor sharp white core
-  ctx.shadowBlur = 8;
-  ctx.fillText(text.toUpperCase(), canvas.width / 2, canvas.height / 2);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.needsUpdate = true;
-  return texture;
-}
-
-function createAlienHologram(alienIndex, themeColor = 0x39ff14) {
-  const THREE = window.THREE;
-  if (!THREE) return new (window.THREE?.Group || Object)();
-  const group = new THREE.Group();
-
-  // Outer rotating holographic scan rings
-  const ringGeo = new THREE.RingGeometry(1.6, 1.7, 48);
-  const ringMat = new THREE.MeshBasicMaterial({
-    color: themeColor,
-    side: THREE.DoubleSide,
-    transparent: true,
-    opacity: 0.65,
-    wireframe: true
-  });
-  const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-  ringMesh.rotation.x = Math.PI / 2;
-  group.add(ringMesh);
-
-  // Secondary fine particle ring
-  const particleCount = 140;
-  const pGeo = new THREE.BufferGeometry();
-  const pPositions = new Float32Array(particleCount * 3);
-  for (let i = 0; i < particleCount; i++) {
-    const angle = (i / particleCount) * Math.PI * 2;
-    const rad = 1.65 + (Math.random() - 0.5) * 0.2;
-    pPositions[i * 3] = Math.cos(angle) * rad;
-    pPositions[i * 3 + 1] = (Math.random() - 0.5) * 0.4;
-    pPositions[i * 3 + 2] = Math.sin(angle) * rad;
-  }
-  pGeo.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
-  const pMat = new THREE.PointsMaterial({
-    color: themeColor,
-    size: 0.05,
-    transparent: true,
-    opacity: 0.85
-  });
-  const particles = new THREE.Points(pGeo, pMat);
-  group.add(particles);
-
-  // Stylized 3D Holo Silhouette tailored to each Alien archetype
-  const holoMat = new THREE.MeshStandardMaterial({
-    color: themeColor,
-    emissive: themeColor,
-    emissiveIntensity: 1.5,
-    wireframe: true,
-    transparent: true,
-    opacity: 0.75
-  });
-
-  const bodyGroup = new THREE.Group();
-
-  switch (alienIndex) {
-    case 0: { // Heatblast (Flame crown & torso)
-      const head = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.9, 8), holoMat);
-      head.position.y = 1.3;
-      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.25, 0.8, 8), holoMat);
-      torso.position.y = 0.7;
-      const limbsL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.8, 0.2), holoMat);
-      limbsL.position.set(-0.6, 0.6, 0);
-      limbsL.rotation.z = 0.4;
-      const limbsR = limbsL.clone();
-      limbsR.position.x = 0.6;
-      limbsR.rotation.z = -0.4;
-      bodyGroup.add(head, torso, limbsL, limbsR);
-      break;
-    }
-    case 1: { // Swampfire (Floral tendrils, flaming hands)
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), holoMat);
-      head.position.y = 1.35;
-      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.2, 0.9, 7), holoMat);
-      torso.position.y = 0.75;
-      const horns = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.08, 6, 12, Math.PI), holoMat);
-      horns.rotation.z = Math.PI;
-      horns.position.y = 1.5;
-      bodyGroup.add(head, torso, horns);
-      break;
-    }
-    case 2: { // Diamondhead (Angular shards & rear spikes)
-      const torso = new THREE.Mesh(new THREE.OctahedronGeometry(0.55), holoMat);
-      torso.position.y = 0.8;
-      const spike1 = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.8, 5), holoMat);
-      spike1.position.set(-0.35, 1.2, -0.2);
-      spike1.rotation.z = 0.4;
-      const spike2 = spike1.clone();
-      spike2.position.x = 0.35;
-      spike2.rotation.z = -0.4;
-      bodyGroup.add(torso, spike1, spike2);
-      break;
-    }
-    case 3: { // XLR8 (Streamlined aerodynamic helmet & roller tail)
-      const coneHead = new THREE.Mesh(new THREE.ConeGeometry(0.28, 1.1, 7), holoMat);
-      coneHead.rotation.x = -1.1;
-      coneHead.position.set(0, 1.1, -0.2);
-      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.7, 6), holoMat);
-      torso.position.set(0, 0.6, 0);
-      const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.02, 0.9, 5), holoMat);
-      tail.position.set(0, 0.3, -0.4);
-      tail.rotation.x = 1.2;
-      bodyGroup.add(coneHead, torso, tail);
-      break;
-    }
-    case 4: { // Humungousaur (Massive hulking shoulders & tail)
-      const torso = new THREE.Mesh(new THREE.DodecahedronGeometry(0.75), holoMat);
-      torso.position.y = 0.8;
-      const shouldersL = new THREE.Mesh(new THREE.SphereGeometry(0.4, 6, 6), holoMat);
-      shouldersL.position.set(-0.8, 0.95, 0);
-      const shouldersR = shouldersL.clone();
-      shouldersR.position.x = 0.8;
-      bodyGroup.add(torso, shouldersL, shouldersR);
-      break;
-    }
-    case 5: { // Alien X (Cosmic trident horns & regal stature)
-      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.22, 1.0, 8), holoMat);
-      torso.position.y = 0.8;
-      const hornMid = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.55, 5), holoMat);
-      hornMid.position.y = 1.55;
-      const hornL = hornMid.clone();
-      hornL.position.set(-0.25, 1.45, 0);
-      hornL.rotation.z = 0.35;
-      const hornR = hornMid.clone();
-      hornR.position.set(0.25, 1.45, 0);
-      hornR.rotation.z = -0.35;
-      bodyGroup.add(torso, hornMid, hornL, hornR);
-      break;
-    }
-    case 6: { // Echo Echo (Small speaker head & sonic resonance rings)
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 12), holoMat);
-      head.position.y = 0.95;
-      const wave1 = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.04, 6, 24), holoMat);
-      wave1.position.y = 0.95;
-      const wave2 = wave1.clone();
-      wave2.scale.set(1.3, 1.3, 1.3);
-      bodyGroup.add(head, wave1, wave2);
-      break;
-    }
-    default:
-      break;
-  }
-
-  group.add(bodyGroup);
-  group.position.y = 0.2;
-  return group;
-}
-
-function Omnitrix() {
-  const containerRef = useRef(null);
-  const sceneRef = useRef(null);
-  const rendererRef = useRef(null);
-  const cameraRef = useRef(null);
-
-  // 3D Model object references for animation
-  const omnitrixRootRef = useRef(null);
-  const coreBezelGroupRef = useRef(null);
-  const dialPlasmaMeshRef = useRef(null);
-  const badgeMeshRef = useRef(null);
-  const sideButtonsRef = useRef({ left: null, right: null });
-  const hologramGroupRef = useRef(null);
-  const plasmaMaterialRef = useRef(null);
-  const pointLightCenterRef = useRef(null);
-
-  // Application State
-  const [scriptsLoaded, setScriptsLoaded] = useState(false);
-  const [userName, setUserName] = useState('Daksh');
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [currentAlienIndex, setCurrentAlienIndex] = useState(0);
-  const [isActivated, setIsActivated] = useState(false); // Omnitrix popup mode
-  const [isTransformed, setIsTransformed] = useState(false); // Slammed down
-  const [activeMode, setActiveMode] = useState('active'); // 'active' (green), 'timeout' (red), 'selfdestruct' (orange/yellow), 'albedo' (crimson)
-  const [isMuted, setIsMuted] = useState(false);
-  const [cameraView, setCameraView] = useState('front'); // 'front', 'hero', 'macro', 'top'
+// A single-file, fully procedural Omnitrix. Drag to turn; tap the dial to raise/lower it;
+// tap the small green button to change the selected glow.
+export default function Omnitrix() {
+  const mount = useRef(null);
 
   useEffect(() => {
-    // Use the project's installed packages instead of relying on external CDN scripts.
-    // The rest of this component uses these globals in its existing Three.js helpers.
-    window.THREE = THREE;
-    window.gsap = gsap;
-    setScriptsLoaded(true);
+    const host = mount.current;
+    if (!host) return;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x07100b);
+    const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
+    camera.position.set(5.6, 4.4, 8.6);
+    camera.lookAt(0, 0.05, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 0.95;
+    renderer.shadowMap.enabled = true;
+    host.appendChild(renderer.domElement);
+
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const room = new RoomEnvironment();
+    const env = pmrem.fromScene(room);
+    room.dispose();
+    scene.environment = env.texture;
+    scene.environmentIntensity = 0.22;
+    scene.add(new THREE.HemisphereLight(0xd9ffe1, 0x20291f, 0.65));
+    const key = new THREE.DirectionalLight(0xf5fff4, 1.6);
+    key.position.set(-3, 7, 6);
+    scene.add(key);
+    const edge = new THREE.DirectionalLight(0xa0feba, 0.8);
+    edge.position.set(4, 4, -5);
+    scene.add(edge);
+    const fill = new THREE.DirectionalLight(0xe1e9e5, 0.5);
+    fill.position.set(6, -1, 5);
+    scene.add(fill);
+
+    const root = new THREE.Group();
+    root.rotation.set(-0.04, -0.27, -0.07);
+    scene.add(root);
+
+    const rubber = new THREE.MeshPhysicalMaterial({ color: 0x070b09, roughness: 0.76, metalness: 0.08, clearcoat: 0.12, clearcoatRoughness: 0.43 });
+    const innerRubber = new THREE.MeshStandardMaterial({ color: 0x0c100e, roughness: 0.87, side: THREE.DoubleSide });
+    const panel = new THREE.MeshPhysicalMaterial({ color: 0x0b100d, metalness: 0.3, roughness: 0.32, clearcoat: 0.58, clearcoatRoughness: 0.22, side: THREE.DoubleSide });
+    const edgeBlack = new THREE.MeshStandardMaterial({ color: 0x080c09, metalness: 0.3, roughness: 0.49, side: THREE.DoubleSide });
+    const titanium = new THREE.MeshStandardMaterial({ color: 0xb3c1b9, metalness: 0.9, roughness: 0.27, side: THREE.DoubleSide });
+    const silver = new THREE.MeshPhysicalMaterial({ color: 0xe4ebe5, metalness: 0.72, roughness: 0.18, clearcoat: 0.95, side: THREE.DoubleSide });
+    const greenMetal = new THREE.MeshPhysicalMaterial({ color: 0x1c3725, metalness: 0.8, roughness: 0.24, clearcoat: 0.64 });
+    const blackMetal = new THREE.MeshStandardMaterial({ color: 0x101713, metalness: 0.75, roughness: 0.34 });
+    const light = new THREE.MeshPhysicalMaterial({ color: 0x9dfc63, emissive: 0x65ed39, emissiveIntensity: 1.2, roughness: 0.18, metalness: 0.12, clearcoat: 1 });
+    const glass = new THREE.MeshPhysicalMaterial({ color: 0xc5eac9, metalness: 0.05, roughness: 0.08, transmission: 0.3, clearcoat: 1, clearcoatRoughness: 0.06, transparent: true, opacity: 0.055, depthWrite: false });
+    const materials = [rubber, innerRubber, panel, edgeBlack, titanium, silver, greenMetal, blackMetal, light, glass];
+
+    // A proper thick, open cuff: x runs across the wrist, theta wraps around it.
+    // Four stitched surfaces and closed ends make the band solid from every angle.
+    function cuffPoint(theta, x, radius) {
+      return new THREE.Vector3(x, radius * Math.cos(theta), radius * Math.sin(theta));
+    }
+    function bandGeometry(radius, xSide, reverse = false) {
+      const verts = [], indices = [], uvs = [];
+      const N = 80, M = 20;
+      for (let i = 0; i <= N; i++) {
+        const theta = -2.63 + i * 5.26 / N;
+        const taper = 1 - 0.24 * Math.pow(Math.abs(theta) / 2.63, 2.7);
+        for (let j = 0; j <= M; j++) {
+          const x = (j / M * 2 - 1) * xSide * taper;
+          const p = cuffPoint(theta, x, radius);
+          verts.push(p.x, p.y, p.z); uvs.push(j / M, i / N);
+        }
+      }
+      for (let i = 0; i < N; i++) for (let j = 0; j < M; j++) {
+        const a = i * (M + 1) + j, b = a + M + 1;
+        if (reverse) indices.push(a, a + 1, b, a + 1, b + 1, b);
+        else indices.push(a, b, a + 1, a + 1, b, b + 1);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      geo.setIndex(indices); geo.computeVertexNormals();
+      return geo;
+    }
+    function ribbon(points, width, radius, mat, parent = root) {
+      const verts = [], ids = [];
+      points.forEach(([x, theta], i) => {
+        const a = points[Math.max(0, i - 1)], b = points[Math.min(points.length - 1, i + 1)];
+        const dx = b[0] - a[0], dt = b[1] - a[1];
+        const len = Math.hypot(dx, dt * radius) || 1;
+        const nx = -dt * radius / len, nt = dx / len / radius;
+        const w = typeof width === 'function' ? width(i / (points.length - 1)) : width;
+        for (const sign of [-1, 1]) {
+          const p = cuffPoint(theta + nt * w * sign / 2, x + nx * w * sign / 2, radius);
+          verts.push(p.x, p.y, p.z);
+        }
+        if (i) { const k = i * 2; ids.push(k - 2, k - 1, k, k - 1, k + 1, k); }
+      });
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+      geo.setIndex(ids); geo.computeVertexNormals();
+      const mesh = new THREE.Mesh(geo, mat); parent.add(mesh); return mesh;
+    }
+    function addMesh(geo, mat, parent = root, pos = [0, 0, 0], rot = [0, 0, 0]) {
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(...pos); mesh.rotation.set(...rot);
+      mesh.castShadow = true; mesh.receiveShadow = true;
+      parent.add(mesh); return mesh;
+    }
+
+    addMesh(bandGeometry(1.62, 2.05), rubber);
+    addMesh(bandGeometry(1.34, 2.05, true), innerRubber);
+    // Wrap edge piping along both sides and along both trimmed cuff ends.
+    for (const s of [-1, 1]) {
+      const pts = [];
+      for (let i = 0; i <= 80; i++) {
+        const t = -2.63 + i * 5.26 / 80;
+        pts.push(cuffPoint(t, s * 2.05 * (1 - 0.24 * Math.pow(Math.abs(t) / 2.63, 2.7)), 1.49));
+      }
+      addMesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 80, 0.055, 7, false), edgeBlack);
+      for (const radius of [1.34, 1.62]) {
+        const seam = [];
+        for (let i = 0; i <= 25; i++) seam.push(cuffPoint(s * 2.63, (i / 25 * 2 - 1) * 1.56, radius));
+        addMesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(seam), 25, 0.045, 7, false), edgeBlack);
+      }
+    }
+    // End caps fill the thickness so there are no paper-thin open edges.
+    for (const t of [-2.63, 2.63]) {
+      const v = [], ids = [];
+      for (let i = 0; i <= 20; i++) {
+        const x = (i / 20 * 2 - 1) * 1.56;
+        for (const r of [1.34, 1.62]) { const p = cuffPoint(t, x, r); v.push(p.x, p.y, p.z); }
+        if (i) { const k = i * 2; ids.push(k - 2, k, k - 1, k - 1, k, k + 1); }
+      }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); g.setIndex(ids); g.computeVertexNormals();
+      addMesh(g, rubber);
+    }
+
+    // Form-fitted raised armour panels, following the same curvature as the cuff.
+    for (const side of [-1, 1]) {
+      const pts = [];
+      for (let i = 0; i <= 32; i++) {
+        const t = -2.2 + i * 4.4 / 32;
+        pts.push([side * (1.2 + 0.1 * Math.cos(t)), t]);
+      }
+      ribbon(pts, (u) => 0.64 - 0.24 * Math.pow(Math.abs(u - 0.5) * 2, 2), 1.636, panel);
+      // Seam parallel to the silver accent.
+      ribbon(pts.map(([x, t]) => [x - side * 0.39, t]), 0.025, 1.645, edgeBlack);
+    }
+    // The reference's bold white angular swept inserts: inset, rather than floating on top.
+    const sweepA = [[-0.82, 0.52], [-0.97, 0.83], [-1.00, 1.15], [-0.80, 1.54], [-0.44, 1.94], [-0.20, 2.19]];
+    const sweepB = [[0.94, 0.30], [0.82, 0.64], [0.71, 1.04], [0.88, 1.49], [1.15, 1.89]];
+    ribbon(sweepA, (u) => 0.40 * Math.sin(Math.PI * (0.08 + u * 0.88)), 1.663, silver);
+    ribbon(sweepB, (u) => 0.26 * Math.sin(Math.PI * (0.05 + u * 0.9)), 1.662, silver);
+    ribbon([[-0.38,-0.35],[-0.70,-0.70],[-0.90,-1.18],[-1.0,-1.75]], u => 0.25 * Math.sin(Math.PI * (0.08 + u * 0.88)), 1.663, titanium);
+
+    // Right-hand green indicator, mounted in its own black sealed recess.
+    const indicator = new THREE.Group();
+    indicator.position.copy(cuffPoint(0.99, 1.41, 1.71));
+    indicator.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, Math.cos(0.99), Math.sin(0.99)));
+    root.add(indicator);
+    addMesh(new THREE.CylinderGeometry(0.23, 0.23, 0.065, 40), blackMetal, indicator, [0, 0, 0], [Math.PI / 2, 0, 0]);
+    const led = addMesh(new THREE.SphereGeometry(0.125, 28, 18), light, indicator, [0, 0, 0.075]);
+    led.scale.set(0.85, 1, 0.45);
+    const ledLamp = new THREE.PointLight(0x75fb44, 0.8, 1.3); ledLamp.position.set(0, 0, 0.16); indicator.add(ledLamp);
+
+    // Low, circular top housing: dark beveled shell, olive machined ring, inset luminous glass.
+    const dial = new THREE.Group(); dial.position.y = 1.57; root.add(dial);
+    addMesh(new THREE.CylinderGeometry(1.22, 1.35, 0.22, 96), blackMetal, dial, [0, 0.10, 0]);
+    addMesh(new THREE.CylinderGeometry(1.12, 1.22, 0.14, 96), greenMetal, dial, [0, 0.28, 0]);
+    addMesh(new THREE.TorusGeometry(1.115, 0.045, 12, 96), titanium, dial, [0, 0.358, 0], [-Math.PI / 2, 0, 0]);
+    addMesh(new THREE.CylinderGeometry(1.045, 1.045, 0.075, 96), blackMetal, dial, [0, 0.354, 0]);
+
+    // The Omnitrix's green hourglass is physically inset beneath a green crystal.
+    const faceCanvas = document.createElement('canvas'); faceCanvas.width = faceCanvas.height = 512;
+    const ctx = faceCanvas.getContext('2d');
+    const grd = ctx.createRadialGradient(215, 175, 15, 256, 256, 330);
+    grd.addColorStop(0, '#c9ffb1'); grd.addColorStop(0.47, '#69e34d'); grd.addColorStop(0.85, '#245c2e'); grd.addColorStop(1, '#0b1d11');
+    ctx.fillStyle = grd; ctx.fillRect(0, 0, 512, 512);
+    ctx.fillStyle = 'rgba(10,26,13,.76)';
+    ctx.beginPath(); ctx.moveTo(85, 95); ctx.lineTo(425, 95); ctx.lineTo(287, 256); ctx.lineTo(425, 417);
+    ctx.lineTo(85, 417); ctx.lineTo(225, 256); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(218,255,188,.32)'; ctx.lineWidth = 8; ctx.stroke();
+    const faceTexture = new THREE.CanvasTexture(faceCanvas); faceTexture.colorSpace = THREE.SRGBColorSpace;
+    const faceMat = new THREE.MeshStandardMaterial({ map: faceTexture, emissive: 0x3de22d, emissiveIntensity: 0.22, roughness: 0.42 });
+    // Cylinder UV face is radial and stretches the image; a horizontal plane retains the crisp symbol.
+    addMesh(new THREE.CircleGeometry(0.99, 96), faceMat, dial, [0, 0.401, 0], [-Math.PI / 2, 0, 0]);
+    const crystal = addMesh(new THREE.SphereGeometry(1.02, 64, 24, 0, Math.PI * 2, 0, Math.PI * 0.17), glass, dial, [0, 0.32, 0]);
+    crystal.scale.y = 0.18;
+    addMesh(new THREE.TorusGeometry(1.005, 0.025, 10, 96), greenMetal, dial, [0, 0.404, 0], [-Math.PI / 2, 0, 0]);
+    const dialLamp = new THREE.PointLight(0x78ed52, 1.1, 2.5); dialLamp.position.set(0, 0.7, 0); dial.add(dialLamp);
+    // Six fine cut marks in the metal surround.
+    for (let i = 0; i < 6; i++) {
+      const a = i * Math.PI / 3;
+      const tick = addMesh(new THREE.BoxGeometry(0.08, 0.012, 0.025), titanium, dial, [Math.sin(a) * 1.167, 0.365, Math.cos(a) * 1.167], [0, -a, 0]);
+      tick.castShadow = false;
+    }
+
+    function resize() {
+      const w = host.clientWidth, h = host.clientHeight;
+      if (!w || !h) return;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.position.set(5.6, 4.4, 8.6);
+      // Keep the entire cuff within narrow portrait viewports.
+      if (w < h) camera.position.multiplyScalar(Math.min(2.35, 1 + (h / w - 1) * 0.96));
+      camera.lookAt(0, 0.05, 0); camera.updateProjectionMatrix();
+    }
+    const observer = new ResizeObserver(resize); observer.observe(host); resize();
+
+    const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
+    const target = { x: root.rotation.x, y: root.rotation.y };
+    let dragging = false, moved = false, downX = 0, downY = 0, lastX = 0, lastY = 0;
+    let raised = false, mode = 0;
+    const modes = [0x65ed39, 0xf04436, 0xf5a83b];
+    function pointerDown(e) {
+      dragging = true; moved = false; downX = lastX = e.clientX; downY = lastY = e.clientY;
+      renderer.domElement.setPointerCapture(e.pointerId);
+    }
+    function pointerMove(e) {
+      if (!dragging) return;
+      const dx = e.clientX - lastX, dy = e.clientY - lastY;
+      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 5) moved = true;
+      target.y += dx * 0.008; target.x = THREE.MathUtils.clamp(target.x + dy * 0.006, -0.85, 0.85);
+      lastX = e.clientX; lastY = e.clientY;
+    }
+    function pointerUp(e) {
+      if (!dragging) return;
+      dragging = false;
+      if (moved) return;
+      const r = renderer.domElement.getBoundingClientRect();
+      pointer.set(((e.clientX-r.left)/r.width)*2-1, -((e.clientY-r.top)/r.height)*2+1);
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObjects([led, ...dial.children.filter(c => c.isMesh)], true);
+      if (!hits.length) return;
+      if (hits[0].object === led) {
+        mode = (mode + 1) % 3;
+        gsap.to(light.color, { r: new THREE.Color(modes[mode]).r, g: new THREE.Color(modes[mode]).g, b: new THREE.Color(modes[mode]).b, duration: 0.35 });
+        light.emissive.setHex(modes[mode]); dialLamp.color.setHex(modes[mode]); ledLamp.color.setHex(modes[mode]);
+      } else {
+        raised = !raised;
+        gsap.to(dial.position, { y: raised ? 2.02 : 1.57, duration: 0.42, ease: raised ? 'back.out(2)' : 'power2.inOut' });
+        gsap.to(dial.rotation, { y: raised ? Math.PI / 6 : 0, duration: 0.55, ease: 'power2.inOut' });
+        gsap.fromTo(dialLamp, { intensity: 3.5 }, { intensity: 1.1, duration: 0.65 });
+      }
+    }
+    renderer.domElement.addEventListener('pointerdown', pointerDown);
+    renderer.domElement.addEventListener('pointermove', pointerMove);
+    renderer.domElement.addEventListener('pointerup', pointerUp);
+    renderer.domElement.addEventListener('pointercancel', pointerUp);
+    renderer.domElement.style.touchAction = 'none';
+    renderer.domElement.style.cursor = 'grab';
+
+    const clock = new THREE.Clock(); let raf;
+    function animate() {
+      raf = requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), 0.05);
+      root.rotation.x = THREE.MathUtils.damp(root.rotation.x, target.x, 7, dt);
+      root.rotation.y = THREE.MathUtils.damp(root.rotation.y, target.y, 7, dt);
+      renderer.render(scene, camera);
+    }
+    animate();
+    return () => {
+      cancelAnimationFrame(raf); observer.disconnect(); gsap.killTweensOf(dial.position); gsap.killTweensOf(dial.rotation);
+      renderer.domElement.removeEventListener('pointerdown', pointerDown);
+      renderer.domElement.removeEventListener('pointermove', pointerMove);
+      renderer.domElement.removeEventListener('pointerup', pointerUp);
+      renderer.domElement.removeEventListener('pointercancel', pointerUp);
+      scene.traverse(o => { if (o.isMesh) o.geometry.dispose(); });
+      materials.forEach(m => m.dispose()); faceMat.dispose(); faceTexture.dispose(); env.dispose(); pmrem.dispose();
+      renderer.dispose(); renderer.domElement.remove();
+    };
   }, []);
 
-  // Sync mute state to audio engine
-  useEffect(() => {
-    audioFX.muted = isMuted;
-  }, [isMuted]);
-
-  useEffect(() => {
-    if (!scriptsLoaded || !containerRef.current) return;
-    const THREE = window.THREE;
-    if (!THREE) return;
-
-    const width = containerRef.current.clientWidth;
-    const height = containerRef.current.clientHeight;
-
-    // Scene
-    const scene = new THREE.Scene();
-    sceneRef.current = scene;
-    scene.background = new THREE.Color(0x050806);
-    scene.fog = new THREE.FogExp2(0x050806, 0.08);
-
-    // Camera
-    const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 100);
-    camera.position.set(0, 0, 8.5); // Directly front-facing matching reference
-    cameraRef.current = camera;
-
-    // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.35;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    rendererRef.current = renderer;
-    containerRef.current.appendChild(renderer.domElement);
-
-    // Lighting setup for studio watch photo aesthetics
-    const ambientLight = new THREE.AmbientLight(0x0a1a0f, 1.8);
-    scene.add(ambientLight);
-
-    // Key green rim light from top
-    const topKeyLight = new THREE.DirectionalLight(0x2aff4b, 3.2);
-    topKeyLight.position.set(0, 7, 3);
-    scene.add(topKeyLight);
-
-    // Warm specular filler for metallic bevels
-    const sideFillLight = new THREE.DirectionalLight(0xffffff, 1.5);
-    sideFillLight.position.set(6, -2, 5);
-    scene.add(sideFillLight);
-
-    const backRimLight = new THREE.DirectionalLight(0x187a32, 2.8);
-    backRimLight.position.set(-5, 4, -4);
-    scene.add(backRimLight);
-
-    // Core point light inside the dial that blooms the watch
-    const corePointLight = new THREE.PointLight(0x39ff14, 4.5, 6.0);
-    corePointLight.position.set(0, 0, 0.6);
-    scene.add(corePointLight);
-    pointLightCenterRef.current = corePointLight;
-
-    // --- Master Omnitrix Group ---
-    const omnitrixRoot = new THREE.Group();
-    omnitrixRootRef.current = omnitrixRoot;
-    scene.add(omnitrixRoot);
-
-    // Emerald Green metallic chassis material
-    const emeraldMetalMat = new THREE.MeshStandardMaterial({
-      color: 0x0f852b,
-      roughness: 0.28,
-      metalness: 0.82,
-      envMapIntensity: 1.2
-    });
-
-    // Dark forest green / armor matte material
-    const forestArmorMat = new THREE.MeshStandardMaterial({
-      color: 0x064d17,
-      roughness: 0.42,
-      metalness: 0.6
-    });
-
-    // Matte dark gunmetal / black rubber strap material
-    const darkChassisMat = new THREE.MeshStandardMaterial({
-      color: 0x121413,
-      roughness: 0.55,
-      metalness: 0.4
-    });
-
-    // Chrome silver for knurled dial pushers
-    const chromeMat = new THREE.MeshStandardMaterial({
-      color: 0xd8e0d9,
-      roughness: 0.2,
-      metalness: 0.95
-    });
-
-    // Bezel dark rim
-    const darkBezelMat = new THREE.MeshStandardMaterial({
-      color: 0x1c211e,
-      roughness: 0.35,
-      metalness: 0.7
-    });
-
-    // Curved Wrist Band (cylindrical curve matching watch strap)
-    const strapCurveGeo = new THREE.CylinderGeometry(3.3, 3.3, 10.0, 36, 1, true, -Math.PI / 1.5, Math.PI / 1.5);
-    const strapMesh = new THREE.Mesh(strapCurveGeo, darkChassisMat);
-    strapMesh.rotation.z = Math.PI / 2;
-    strapMesh.position.set(0, 0, -2.9);
-    omnitrixRoot.add(strapMesh);
-
-    // Watch base chassis (sculpted curved cradle)
-    const chassisGeo = new THREE.CylinderGeometry(2.8, 2.9, 0.75, 48);
-    const chassisMesh = new THREE.Mesh(chassisGeo, forestArmorMat);
-    chassisMesh.rotation.x = Math.PI / 2;
-    omnitrixRoot.add(chassisMesh);
-
-    // Top Hood Mount (features the "Daksh" nameplate badge)
-    const topHoodGeo = new THREE.BoxGeometry(2.7, 1.45, 0.85);
-    const topHoodMesh = new THREE.Mesh(topHoodGeo, emeraldMetalMat);
-    topHoodMesh.position.set(0, 2.3, -0.05);
-    // Slight angled incline matching the reference image hood
-    topHoodMesh.rotation.x = 0.22;
-    omnitrixRoot.add(topHoodMesh);
-
-    // Custom Name Badge Plane on the Top Hood
-    const badgeTexture = createDakshBadgeTexture(userName, 'green');
-    const badgeGeo = new THREE.PlaneGeometry(2.1, 0.62);
-    const badgeMat = new THREE.MeshBasicMaterial({
-      map: badgeTexture,
-      transparent: true
-    });
-    const badgeMesh = new THREE.Mesh(badgeGeo, badgeMat);
-    badgeMesh.position.set(0, 2.36, 0.39);
-    badgeMesh.rotation.x = 0.22;
-    omnitrixRoot.add(badgeMesh);
-    badgeMeshRef.current = badgeMesh;
-
-    // Bottom Hood Mount
-    const botHoodGeo = new THREE.BoxGeometry(2.7, 1.35, 0.85);
-    const botHoodMesh = new THREE.Mesh(botHoodGeo, emeraldMetalMat);
-    botHoodMesh.position.set(0, -2.3, -0.05);
-    botHoodMesh.rotation.x = -0.22;
-    omnitrixRoot.add(botHoodMesh);
-
-    // Sculpted Green Wing Horns flanking the circular bezel (Left & Right)
-    const wingShape = new THREE.Shape();
-    wingShape.moveTo(0, 0);
-    wingShape.lineTo(0.9, 1.6);
-    wingShape.lineTo(0.5, 2.3);
-    wingShape.lineTo(-0.2, 2.0);
-    wingShape.closePath();
-    const extrudeSettings = { depth: 0.65, bevelEnabled: true, bevelSegments: 3, steps: 1, bevelSize: 0.1, bevelThickness: 0.1 };
-    const wingGeo = new THREE.ExtrudeGeometry(wingShape, extrudeSettings);
-
-    const leftWing = new THREE.Mesh(wingGeo, emeraldMetalMat);
-    leftWing.position.set(-2.55, -1.1, -0.3);
-    leftWing.rotation.z = 0.15;
-    omnitrixRoot.add(leftWing);
-
-    const rightWing = new THREE.Mesh(wingGeo, emeraldMetalMat);
-    rightWing.position.set(2.55, -1.1, -0.3);
-    rightWing.rotation.y = Math.PI;
-    rightWing.rotation.z = -0.15;
-    omnitrixRoot.add(rightWing);
-
-    // Core Bezel Group (Pops UP when activated and rotates with alien selector)
-    const coreBezelGroup = new THREE.Group();
-    coreBezelGroup.position.z = 0.35;
-    omnitrixRoot.add(coreBezelGroup);
-    coreBezelGroupRef.current = coreBezelGroup;
-
-    // Outer Dark Segmented Bezel Ring with crosshair seam indents
-    const outerRingGeo = new THREE.CylinderGeometry(2.5, 2.5, 0.42, 64);
-    const outerRingMesh = new THREE.Mesh(outerRingGeo, darkBezelMat);
-    outerRingMesh.rotation.x = Math.PI / 2;
-    coreBezelGroup.add(outerRingMesh);
-
-    // Bezel Inner Bevel (Emerald Metallic rim)
-    const innerRimGeo = new THREE.TorusGeometry(2.28, 0.12, 16, 64);
-    const innerRimMesh = new THREE.Mesh(innerRimGeo, emeraldMetalMat);
-    innerRimMesh.position.z = 0.22;
-    coreBezelGroup.add(innerRimMesh);
-
-    // Cross seams/indicators on bezel (4 tick points at 12, 3, 6, 9 o'clock)
-    for (let i = 0; i < 4; i++) {
-      const angle = (i * Math.PI) / 2;
-      const seamGeo = new THREE.BoxGeometry(0.12, 0.45, 0.08);
-      const seamMesh = new THREE.Mesh(seamGeo, chromeMat);
-      seamMesh.position.set(Math.sin(angle) * 2.38, Math.cos(angle) * 2.38, 0.22);
-      seamMesh.rotation.z = -angle;
-      coreBezelGroup.add(seamMesh);
-    }
-
-    // Side cylindrical pushers / Dial knob (Right & Left)
-    const pusherGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.8, 24);
-    const rightPusher = new THREE.Mesh(pusherGeo, chromeMat);
-    rightPusher.rotation.z = Math.PI / 2;
-    rightPusher.position.set(2.8, 0.1, 0.1);
-    omnitrixRoot.add(rightPusher);
-
-    const leftPusher = new THREE.Mesh(pusherGeo, darkChassisMat);
-    leftPusher.rotation.z = Math.PI / 2;
-    leftPusher.position.set(-2.7, 0.1, 0.1);
-    omnitrixRoot.add(leftPusher);
-    sideButtonsRef.current = { left: leftPusher, right: rightPusher };
-
-    // Dial Plasma Hourglass Custom Shader Mesh
-    const plasmaMat = new THREE.ShaderMaterial({
-      uniforms: THREE.UniformsUtils.clone(DialPlasmaShader.uniforms),
-      vertexShader: DialPlasmaShader.vertexShader,
-      fragmentShader: DialPlasmaShader.fragmentShader,
-      side: THREE.DoubleSide
-    });
-    plasmaMaterialRef.current = plasmaMat;
-
-    const dialCircleGeo = new THREE.CircleGeometry(1.85, 64);
-    const dialPlasmaMesh = new THREE.Mesh(dialCircleGeo, plasmaMat);
-    dialPlasmaMesh.position.z = 0.22;
-    coreBezelGroup.add(dialPlasmaMesh);
-    dialPlasmaMeshRef.current = dialPlasmaMesh;
-
-    // Reflective Lens / Glass Dome over the dial
-    const lensGeo = new THREE.SphereGeometry(1.9, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.25);
-    const lensMat = new THREE.MeshPhysicalMaterial({
-      roughness: 0.05,
-      transmission: 0.9,
-      thickness: 0.6,
-      ior: 1.52,
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0.45,
-      reflectivity: 0.9
-    });
-    const lensMesh = new THREE.Mesh(lensGeo, lensMat);
-    lensMesh.position.z = 0.08;
-    coreBezelGroup.add(lensMesh);
-
-    // Group for projected 3D Alien Hologram (Floats above when popped open)
-    const holoGroup = new THREE.Group();
-    holoGroup.position.set(0, 0, 1.2);
-    holoGroup.scale.set(0.001, 0.001, 0.001); // hidden initially
-    coreBezelGroup.add(holoGroup);
-    hologramGroupRef.current = holoGroup;
-
-    // Ambient floating dust particles around watch
-    const dustCount = 80;
-    const dustGeo = new THREE.BufferGeometry();
-    const dustCoords = new Float32Array(dustCount * 3);
-    for (let i = 0; i < dustCount * 3; i += 3) {
-      dustCoords[i] = (Math.random() - 0.5) * 12;
-      dustCoords[i + 1] = (Math.random() - 0.5) * 10;
-      dustCoords[i + 2] = (Math.random() - 0.5) * 8;
-    }
-    dustGeo.setAttribute('position', new THREE.BufferAttribute(dustCoords, 3));
-    const dustMat = new THREE.PointsMaterial({
-      color: 0x39ff14,
-      size: 0.04,
-      transparent: true,
-      opacity: 0.45
-    });
-    const dustPoints = new THREE.Points(dustGeo, dustMat);
-    scene.add(dustPoints);
-
-    let mouseX = 0;
-    let mouseY = 0;
-    let targetRotX = 0;
-    let targetRotY = 0;
-
-    const handleMouseMove = (e) => {
-      const rect = containerRef.current.getBoundingClientRect();
-      const normX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      const normY = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
-      targetRotY = normX * 0.25;
-      targetRotX = -normY * 0.2;
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-
-    // Responsive Canvas Resize
-    const handleResize = () => {
-      if (!containerRef.current || !renderer || !camera) return;
-      const w = containerRef.current.clientWidth;
-      const h = containerRef.current.clientHeight;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
-    };
-    window.addEventListener('resize', handleResize);
-
-    let animationFrameId;
-    const clock = new THREE.Clock();
-
-    const animate = () => {
-      animationFrameId = requestAnimationFrame(animate);
-      const elapsedTime = clock.getElapsedTime();
-
-      // Update Custom Plasma Shader uniforms
-      if (plasmaMaterialRef.current) {
-        plasmaMaterialRef.current.uniforms.uTime.value = elapsedTime;
-        // subtle voltage oscillation
-        plasmaMaterialRef.current.uniforms.uFlicker.value = 0.95 + Math.sin(elapsedTime * 18.0) * 0.05;
-      }
-
-      // Smooth mouse tilt parallax
-      if (omnitrixRootRef.current) {
-        omnitrixRootRef.current.rotation.y += (targetRotY - omnitrixRootRef.current.rotation.y) * 0.06;
-        omnitrixRootRef.current.rotation.x += (targetRotX - omnitrixRootRef.current.rotation.x) * 0.06;
-      }
-
-      // Slowly rotate alien hologram and dust
-      if (hologramGroupRef.current) {
-        hologramGroupRef.current.rotation.z += 0.012;
-      }
-      dustPoints.rotation.y = elapsedTime * 0.03;
-
-      renderer.render(scene, camera);
-    };
-
-    animate();
-
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('resize', handleResize);
-      if (rendererRef.current && rendererRef.current.domElement) {
-        rendererRef.current.domElement.remove();
-      }
-    };
-  }, [scriptsLoaded]);
-
-  useEffect(() => {
-    if (!badgeMeshRef.current || !scriptsLoaded) return;
-    const theme = activeMode === 'timeout' || activeMode === 'albedo' ? 'red' : activeMode === 'selfdestruct' ? 'orange' : 'green';
-    const newTex = createDakshBadgeTexture(userName, theme);
-    if (newTex) {
-      badgeMeshRef.current.material.map = newTex;
-      badgeMeshRef.current.material.needsUpdate = true;
-    }
-  }, [userName, activeMode, scriptsLoaded]);
-
-  useEffect(() => {
-    if (!plasmaMaterialRef.current || !pointLightCenterRef.current) return;
-    const uniforms = plasmaMaterialRef.current.uniforms;
-
-    if (activeMode === 'active') {
-      uniforms.uColorMode.value = 0.0;
-      pointLightCenterRef.current.color.setHex(0x39ff14);
-    } else if (activeMode === 'timeout' || activeMode === 'albedo') {
-      uniforms.uColorMode.value = 1.0;
-      pointLightCenterRef.current.color.setHex(0xff182e);
-    } else if (activeMode === 'selfdestruct') {
-      uniforms.uColorMode.value = 2.0;
-      pointLightCenterRef.current.color.setHex(0xff7700);
-      audioFX.playAlarmBeep();
-    }
-  }, [activeMode]);
-
-  const updateHologramAlien = useCallback((index) => {
-    if (!hologramGroupRef.current || !window.THREE) return;
-    const holo = hologramGroupRef.current;
-    
-    // Clear previous hologram mesh
-    while (holo.children.length > 0) {
-      const obj = holo.children[0];
-      holo.remove(obj);
-    }
-
-    const themeHex = activeMode === 'timeout' || activeMode === 'albedo' 
-      ? 0xff2a45 
-      : activeMode === 'selfdestruct' 
-      ? 0xff9900 
-      : 0x39ff14;
-
-    const newAlienMesh = createAlienHologram(index, themeHex);
-    holo.add(newAlienMesh);
-  }, [activeMode]);
-
-  // Keep hologram updated when current alien index changes
-  useEffect(() => {
-    if (scriptsLoaded) {
-      updateHologramAlien(currentAlienIndex);
-    }
-  }, [currentAlienIndex, updateHologramAlien, scriptsLoaded]);
-
-  const toggleActivation = () => {
-    if (!coreBezelGroupRef.current) return;
-    const gsap = window.gsap;
-
-    
-
-      if (gsap) {
-        // Bezel elevates outwards + button depresses
-        gsap.to(coreBezelGroupRef.current.position, {
-          z: 1.15,
-          duration: 0.45,
-          ease: 'back.out(2.2)'
-        });
-
-        // Side buttons nudge in
-        if (sideButtonsRef.current.right) {
-          gsap.to(sideButtonsRef.current.right.position, {
-            x: 2.62,
-            yoyo: true,
-            repeat: 1,
-            duration: 0.15
-          });
-        }
-
-        // Grow & animate Hologram projection
-        if (hologramGroupRef.current) {
-          updateHologramAlien(currentAlienIndex);
-          gsap.to(hologramGroupRef.current.scale, {
-            x: 1,
-            y: 1,
-            z: 1,
-            duration: 0.5,
-            delay: 0.15,
-            ease: 'power3.out'
-          });
-          gsap.to(hologramGroupRef.current.position, {
-            z: 2.4,
-            duration: 0.5,
-            delay: 0.15,
-            ease: 'power3.out'
-          });
-        }
-
-        // Intensify plasma core
-        if (plasmaMaterialRef.current) {
-          gsap.to(plasmaMaterialRef.current.uniforms.uIntensity, {
-            value: 2.8,
-            duration: 0.4
-          });
-        }
-      } else {
-        coreBezelGroupRef.current.position.z = 1.15;
-      }
-  };
-
-  return (
-    <div
-      ref={containerRef}
-      className="relative h-screen w-screen overflow-hidden bg-[#040705]"
-    />
-  );
+  return <div ref={mount} className="h-screen w-screen overflow-hidden bg-background" aria-label="Interactive 3D Omnitrix watch" />;
 }
-
-
-export default Omnitrix;
