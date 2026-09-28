@@ -1,6 +1,7 @@
 import { Canvas } from "@react-three/fiber";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import ParticleField from "./ParticleField";
+import Omnitrix from "./Omnitrix";
 
 function Intro() {
   return (
@@ -24,7 +25,7 @@ function Intro() {
 
       {/* Three.js canvas */}
       <div className="absolute inset-0 z-0">
-        <Canvas camera={{ position: [0, 0, 5], fov: 60}} >
+        <Canvas camera={{ position: [0, 0, 5], fov: 60}} gl={{ antialias: true }} >
             <ParticleField />
 
             <EffectComposer>
@@ -36,6 +37,10 @@ function Intro() {
                    />
             </EffectComposer>
         </Canvas>
+      </div>
+
+      <div className="absolute inset-0 z-0">
+        <Omnitrix />
       </div>
 
     </section>
