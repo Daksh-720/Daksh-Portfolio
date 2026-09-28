@@ -1,4 +1,6 @@
 import { Canvas } from "@react-three/fiber";
+import { EffectComposer, Bloom } from "@react-three/postprocessing";
+import ParticleField from "./ParticleField";
 
 function Intro() {
   return (
@@ -22,7 +24,18 @@ function Intro() {
 
       {/* Three.js canvas */}
       <div className="absolute inset-0 z-0">
-        <Canvas />
+        <Canvas camera={{ position: [0, 0, 5], fov: 60}} >
+            <ParticleField />
+
+            <EffectComposer>
+                <Bloom 
+                   intensity={1}
+                   luminanceThreshold={0.1}
+                   luminanceSmoothing={0.9}
+                   mipmapBlur
+                   />
+            </EffectComposer>
+        </Canvas>
       </div>
 
     </section>
