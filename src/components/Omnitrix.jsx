@@ -208,7 +208,11 @@ export default function Omnitrix() {
       // Outer green structural spine follows the band underneath the silver sweep.
       ribbon([[side * 1.76, 0.44], [side * 1.78, 0.85], [side * 1.73, 1.30], [side * 1.66, 1.77], [side * 1.47, 2.12]], 0.12, 1.655, greenMetal);
       ribbon([[side * 1.76, 0.44], [side * 1.78, 0.85], [side * 1.73, 1.30], [side * 1.66, 1.77], [side * 1.47, 2.12]], 0.027, 1.666, enamel);
+      const back = [[side * 1.76, -0.44], [side * 1.78, -0.85], [side * 1.73, -1.30], [side * 1.66, -1.77], [side * 1.47, -2.12]];
+      ribbon(back, 0.12, 1.655, greenMetal);
+      ribbon(back, 0.027, 1.666, enamel);
     }
+    
     // Layered arrow-shaped enamel pockets down the face of the bracelet.
     const armorPanels = [
       { t: 0.97, width: 0.45 },
@@ -222,10 +226,26 @@ export default function Omnitrix() {
       ribbon([[0, t - 0.056], [0, t + 0.115]], i === 1 ? 0.24 : 0.16, 1.681, greenMetal);
       ribbon([[0, t - 0.02], [0, t + 0.08]], 0.038, 1.686, enamel);
     });
+
+    const centerArcBack = centerArc.map(([x, t]) => [x, -t]);
+    ribbon(centerArcBack, u => 1.52 - 0.32 * Math.abs(u - 0.5), 1.641, edgeBlack);
+    ribbon(centerArcBack, u => 1.37 - 0.33 * Math.abs(u - 0.5), 1.655, gunmetal);
+    ribbon(centerArcBack, u => 1.21 - 0.31 * Math.abs(u - 0.5), 1.665, inset);
+    for (const side of [-1, 1]) {
+      const edgePath = centerArcBack.map(([x, t]) => [x + side * (0.66 - 0.17 * Math.abs((-t - 1.47) / 0.85)), t]);
+      ribbon(edgePath, 0.046, 1.672, enamel);
+    }
+    armorPanels.forEach(({ t, width }, i) => {
+      const tt = -t;
+      const outline = [[-width, tt + 0.125], [0, tt + 0.075], [width, tt + 0.125], [width * 0.73, tt - 0.13], [0, tt - 0.20], [-width * 0.73, tt - 0.13], [-width, tt + 0.125]];
+      ribbon(outline, 0.045, 1.679, blackMetal);
+      ribbon([[0, tt + 0.056], [0, tt - 0.115]], i === 1 ? 0.24 : 0.16, 1.681, greenMetal);
+      ribbon([[0, tt + 0.02], [0, tt - 0.08]], 0.038, 1.686, enamel);
+    });
     // Thick side-cheeks, green beveled housings and articulated tread blocks.
     for (const side of [-1, 1]) {
-      for (let i = 0; i < 7; i++) {
-        const t = 0.81 + i * 0.205;
+      for (let i = -7; i < 9; i++) {
+        const t = i >= 0 ? 0.81 + i * 0.205 : -0.81 + (i+1) * 0.205;
         const center = cuffPoint(t, side * 1.84, 1.655);
         const normal = new THREE.Vector3(0, Math.cos(t), Math.sin(t));
         const tread = addMesh(new THREE.BoxGeometry(0.29, 0.105, 0.21), rubber, root, center.toArray());
@@ -266,17 +286,26 @@ export default function Omnitrix() {
     }
 
     // Right-hand green indicator, mounted in its own black sealed recess.
-    const indicator = new THREE.Group();
-    indicator.position.copy(cuffPoint(0.99, 1.41, 1.71));
-    indicator.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, Math.cos(0.99), Math.sin(0.99)));
-    root.add(indicator);
-    addMesh(new THREE.CylinderGeometry(0.23, 0.23, 0.065, 40), blackMetal, indicator, [0, 0, 0], [Math.PI / 2, 0, 0]);
-    const led = addMesh(new THREE.SphereGeometry(0.125, 28, 18), light, indicator, [0, 0, 0.075]);
-    led.scale.set(0.85, 1, 0.45);
-    const ledLamp = new THREE.PointLight(0x75fb44, 0.8, 1.3); ledLamp.position.set(0, 0, 0.16); indicator.add(ledLamp);
+    const leds = [], ledLamps = [];
+     function addIndicator(x, theta) {
+       const g = new THREE.Group();
+       g.position.copy(cuffPoint(theta, x, 1.71));
+       g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, Math.cos(theta), Math.sin(theta)));
+       root.add(g);
+       addMesh(new THREE.CylinderGeometry(0.23, 0.23, 0.065, 40), blackMetal, g, [0, 0, 0], [Math.PI / 2, 0, 0]);
+       const l = addMesh(new THREE.SphereGeometry(0.125, 28, 18), light, g, [0, 0, 0.075]);
+       l.scale.set(0.85, 1, 0.45);
+       const lamp = new THREE.PointLight(0x75fb44, 0.8, 1.3);
+       lamp.position.set(0, 0, 0.16);
+       g.add(lamp);
+       leds.push(l); ledLamps.push(lamp);
+     }
+     addIndicator(1.41, 0.99);
+     addIndicator(-1.41, 0.99);
 
-    // Fixed chassis, luminous actuator, and independently lifted crown: the reveal
-    // exposes an actual mechanical stack instead of lifting a single flat disk.
+      // Fixed chassis, luminous actuator, and independently lifted crown: the reveal
+      // exposes an actual mechanical stack instead of lifting a single flat disk.
+
     const chassis = new THREE.Group(); chassis.position.y = 1.59; root.add(chassis);
     addMesh(new THREE.CylinderGeometry(1.19, 1.32, 0.22, 96), blackMetal, chassis, [0, 0.05, 0]);
     addMesh(new THREE.CylinderGeometry(1.10, 1.18, 0.06, 96), titanium, chassis, [0, 0.18, 0]);
@@ -342,7 +371,12 @@ export default function Omnitrix() {
       camera.position.set(7.1, 10.8, 9.8);
       // Keep the entire cuff within narrow portrait viewports.
       if (w < h) camera.position.multiplyScalar(Math.min(1.55, 1 + (h / w - 1) * 0.45));
-      camera.lookAt(0, 0.05, 0); camera.updateProjectionMatrix();
+      camera.lookAt(0, 0.05, 0);
+    
+      const shift = w < h ? 0.05 : 0.11; // smaller shift on portrait phones
+      camera.setViewOffset(w, h, -w * shift, 0, w, h); // negative = model moves right
+    
+      camera.updateProjectionMatrix();
     }
     const observer = new ResizeObserver(resize); observer.observe(host); resize();
 
