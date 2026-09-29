@@ -212,7 +212,7 @@ export default function Omnitrix() {
       ribbon(back, 0.12, 1.655, greenMetal);
       ribbon(back, 0.027, 1.666, enamel);
     }
-    
+
     // Layered arrow-shaped enamel pockets down the face of the bracelet.
     const armorPanels = [
       { t: 0.97, width: 0.45 },
@@ -302,6 +302,8 @@ export default function Omnitrix() {
      }
      addIndicator(1.41, 0.99);
      addIndicator(-1.41, 0.99);
+     addIndicator(1.41, -0.99);
+     addIndicator(-1.41, -0.99);
 
       // Fixed chassis, luminous actuator, and independently lifted crown: the reveal
       // exposes an actual mechanical stack instead of lifting a single flat disk.
