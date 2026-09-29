@@ -1,11 +1,30 @@
+import { useRef, useState, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import ParticleField from "./ParticleField";
 import Omnitrix from "./Omnitrix";
 
 function Intro() {
+  const sectionRef = useRef(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting);
+      },
+      { rootMargin: "400px" } // Activate 400px before scrolling into view for seamless transition
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <section className="relative z-10 h-screen w-full overflow-hidden bg-black text-white">
+    <section ref={sectionRef} className="relative z-10 h-screen w-full overflow-hidden bg-black text-white">
 
       {/* Intro text */}
       <div className="absolute left-[8%] top-1/2 z-10 -translate-y-1/2">
@@ -25,7 +44,11 @@ function Intro() {
 
       {/* Three.js canvas */}
       <div className="absolute inset-0 z-0">
-        <Canvas camera={{ position: [0, 0, 5], fov: 60}} gl={{ antialias: true }} >
+        <Canvas 
+          camera={{ position: [0, 0, 5], fov: 60}} 
+          gl={{ antialias: true, powerPreference: "high-performance" }}
+          frameloop={isVisible ? "always" : "never"}
+        >
             <ParticleField />
 
             <EffectComposer>
@@ -40,7 +63,7 @@ function Intro() {
       </div>
 
       <div className="absolute inset-0 z-0">
-        <Omnitrix />
+        <Omnitrix isVisible={isVisible} />
       </div>
 
     </section>

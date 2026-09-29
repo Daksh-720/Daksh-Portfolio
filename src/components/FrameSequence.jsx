@@ -9,7 +9,10 @@ const TOTAL_FRAMES = 300;
 export default function FrameSequence() {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
-  const imagesRef = useRef([]);
+  const ctxRef = useRef(null);
+  const coordsRef = useRef({ x: 0, y: 0, w: 0, h: 0 });
+  const currentFrameRef = useRef(-1);
+  const imagesRef = useRef(new Array(TOTAL_FRAMES));
 
   // Helper to format frame filename
   const getFrameUrl = (index) => {
@@ -17,51 +20,60 @@ export default function FrameSequence() {
     return `/Portfolio-frames/ezgif-frame-${frameNum}.png`;
   };
 
-  // Find nearest loaded frame to prevent any blank flashes
+  // Find nearest decoded frame to prevent any blank flashes
   const getBestImage = (targetIndex) => {
     const images = imagesRef.current;
-    if (images[targetIndex]?.complete && images[targetIndex]?.naturalWidth) {
+    if (images[targetIndex]?.naturalWidth) {
       return images[targetIndex];
     }
     // Search backward
     for (let i = targetIndex - 1; i >= 0; i--) {
-      if (images[i]?.complete && images[i]?.naturalWidth) return images[i];
+      if (images[i]?.naturalWidth) return images[i];
     }
     // Search forward
     for (let i = targetIndex + 1; i < TOTAL_FRAMES; i++) {
-      if (images[i]?.complete && images[i]?.naturalWidth) return images[i];
+      if (images[i]?.naturalWidth) return images[i];
     }
     return null;
   };
 
-  // Draw frame on canvas with high-DPI supersampling & razor-sharp filtering
+  // Ultra-fast blit with zero layout thrashing or context recreation
   const drawFrame = (frameIndex) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
+    const ctx = ctxRef.current;
     if (!ctx) return;
 
     const img = getBestImage(frameIndex);
     if (!img) return;
 
-    // Supersample at least 2x (or native display DPI if higher) for 4K clarity
+    const { x, y, w, h } = coordsRef.current;
+    ctx.drawImage(img, x, y, w, h);
+    currentFrameRef.current = frameIndex;
+  };
+
+  // Update canvas buffer and precompute rendering geometry only on resize/init
+  const updateCanvasSize = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const winW = window.innerWidth;
     const winH = window.innerHeight;
 
     const targetW = Math.round(winW * dpr);
     const targetH = Math.round(winH * dpr);
+
     if (canvas.width !== targetW || canvas.height !== targetH) {
       canvas.width = targetW;
       canvas.height = targetH;
     }
 
-    // Enable high quality bicubic resampling
+    const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
+    ctxRef.current = ctx;
     ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "high";
+    ctx.imageSmoothingQuality = "medium"; // GPU-accelerated bilinear filtering
 
-    const imgW = img.naturalWidth || 1920;
-    const imgH = img.naturalHeight || 1080;
+    const imgW = 1670;
+    const imgH = 941;
     const imgRatio = imgW / imgH;
     const canvasRatio = targetW / targetH;
 
@@ -79,101 +91,130 @@ export default function FrameSequence() {
       offsetY = 0;
     }
 
-    // Draw directly onto high-resolution canvas buffer with integer coordinates
-    ctx.drawImage(img, offsetX, offsetY, renderW, renderH);
+    coordsRef.current = { x: offsetX, y: offsetY, w: renderW, h: renderH };
+
+    if (currentFrameRef.current >= 0) {
+      drawFrame(currentFrameRef.current);
+    }
   };
 
-  // Preload frames progressively
+  // Progressive preloader with async bitmap decoding off the main thread
   useEffect(() => {
     imagesRef.current = new Array(TOTAL_FRAMES);
     let isCancelled = false;
 
-    // Load first frame immediately
-    const firstImg = new Image();
-    firstImg.src = getFrameUrl(0);
-    firstImg.decoding = "async";
-    imagesRef.current[0] = firstImg;
+    const loadFrame = (idx) => {
+      if (imagesRef.current[idx]) return Promise.resolve(imagesRef.current[idx]);
 
-    firstImg.onload = () => {
+      const img = new Image();
+      img.decoding = "async";
+      img.src = getFrameUrl(idx);
+      imagesRef.current[idx] = img;
+
+      if ("decode" in img) {
+        return img
+          .decode()
+          .catch(() => {})
+          .then(() => {
+            if (!isCancelled && currentFrameRef.current === idx) {
+              drawFrame(idx);
+            }
+            return img;
+          });
+      } else {
+        return new Promise((resolve) => {
+          img.onload = () => {
+            if (!isCancelled && currentFrameRef.current === idx) {
+              drawFrame(idx);
+            }
+            resolve(img);
+          };
+          img.onerror = () => resolve(img);
+        });
+      }
+    };
+
+    // Load first frame immediately for instant first paint
+    loadFrame(0).then(() => {
       if (isCancelled) return;
       drawFrame(0);
 
-      // Keyframes first (every 4th frame) for rapid scrubbing responsiveness
-      const keyframes = [];
-      for (let i = 1; i < TOTAL_FRAMES; i += 4) keyframes.push(i);
+      // 1. Initial window (frames 1-15) for immediate scrub smoothness
+      const initialWindow = [];
+      for (let i = 1; i <= Math.min(15, TOTAL_FRAMES - 1); i++) {
+        initialWindow.push(i);
+      }
 
-      // Remaining frames
+      // 2. Keyframes across the sequence (every 4th frame)
+      const keyframes = [];
+      for (let i = 16; i < TOTAL_FRAMES; i += 4) {
+        keyframes.push(i);
+      }
+
+      // 3. Fill in all remaining intermediate frames
       const remaining = [];
-      for (let i = 1; i < TOTAL_FRAMES; i++) {
+      for (let i = 16; i < TOTAL_FRAMES; i++) {
         if (i % 4 !== 0) remaining.push(i);
       }
 
-      const queue = [...keyframes, ...remaining];
+      const queue = [...initialWindow, ...keyframes, ...remaining];
       let queueIdx = 0;
-      const CONCURRENCY = 12;
+      const CONCURRENCY = 6; // Optimal concurrency to avoid network/thread congestion
 
       const loadNext = () => {
         if (isCancelled || queueIdx >= queue.length) return;
-        const idx = queue[queueIdx++];
-        const img = new Image();
-        img.decoding = "async";
-        img.src = getFrameUrl(idx);
-        imagesRef.current[idx] = img;
-
-        const onDone = () => {
-          if (isCancelled) return;
-          loadNext();
-        };
-
-        img.onload = onDone;
-        img.onerror = onDone;
+        const nextIdx = queue[queueIdx++];
+        loadFrame(nextIdx).finally(() => {
+          if (!isCancelled) {
+            loadNext();
+          }
+        });
       };
 
       for (let c = 0; c < CONCURRENCY; c++) {
         loadNext();
       }
-    };
+    });
 
     return () => {
       isCancelled = true;
     };
   }, []);
 
-  // GSAP ScrollTrigger for ultra-smooth frame changes
+  // GSAP ScrollTrigger tween with high-precision momentum scrub
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const frameTracker = { frame: 0 };
+    updateCanvasSize();
+    window.addEventListener("resize", updateCanvasSize);
 
-    const st = ScrollTrigger.create({
-      trigger: containerRef.current,
-      start: "top top",
-      end: "bottom bottom",
-      scrub: 0.35, // Butter-smooth momentum scrub
-      onUpdate: (self) => {
-        const prog = self.progress;
+    const playhead = { frame: 0 };
+
+    const tween = gsap.to(playhead, {
+      frame: TOTAL_FRAMES - 1,
+      ease: "none",
+      scrollTrigger: {
+        trigger: containerRef.current,
+        start: "top top",
+        end: "bottom bottom",
+        scrub: 0.45, // Fluid momentum scrub
+      },
+      onUpdate: () => {
         const targetFrame = Math.min(
           TOTAL_FRAMES - 1,
-          Math.max(0, Math.round(prog * (TOTAL_FRAMES - 1)))
+          Math.max(0, Math.round(playhead.frame))
         );
 
-        if (targetFrame !== frameTracker.frame) {
-          frameTracker.frame = targetFrame;
-          requestAnimationFrame(() => {
-            drawFrame(targetFrame);
-          });
+        if (targetFrame !== currentFrameRef.current) {
+          drawFrame(targetFrame);
         }
       },
     });
 
-    const handleResize = () => {
-      drawFrame(frameTracker.frame);
-    };
-    window.addEventListener("resize", handleResize);
-
     return () => {
-      st.kill();
-      window.removeEventListener("resize", handleResize);
+      tween.kill();
+      if (tween.scrollTrigger) tween.scrollTrigger.kill();
+      window.removeEventListener("resize", updateCanvasSize);
     };
   }, []);
 

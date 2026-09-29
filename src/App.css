@@ -15,6 +15,7 @@
   z-index: 1;
   pointer-events: none;
   overflow: hidden;
+  contain: strict;
 }
 
 /* HIGH DEFINITION 4K RENDERING PIPELINE */
@@ -26,11 +27,12 @@
   image-rendering: high-quality;
   /* Enhanced contrast, deep inky blacks, and vivid neon green clarity */
   filter: contrast(1.05) brightness(1.02) saturate(1.08);
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
+  transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  will-change: contents;
+  will-change: transform;
+  contain: strict;
 }
 
 /* ULTRA-SUBTLE VIGNETTE TO PRESERVE FRAME BRILLIANCE */

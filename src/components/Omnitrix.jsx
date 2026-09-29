@@ -5,8 +5,13 @@ import gsap from 'gsap';
 
 // A single-file, fully procedural Omnitrix. Drag to turn; tap the dial to raise/lower it;
 // tap the small green button to change the selected glow.
-export default function Omnitrix() {
+export default function Omnitrix({ isVisible = true }) {
   const mount = useRef(null);
+  const isVisibleRef = useRef(isVisible);
+
+  useEffect(() => {
+    isVisibleRef.current = isVisible;
+  }, [isVisible]);
 
   useEffect(() => {
     const host = mount.current;
@@ -452,6 +457,7 @@ export default function Omnitrix() {
     let previousTime = performance.now(); let raf;
     function animate(now) {
       raf = requestAnimationFrame(animate);
+      if (!isVisibleRef.current) return;
       const dt = Math.min((now - previousTime) / 1000, 0.05);
       previousTime = now;
       root.rotation.x = THREE.MathUtils.damp(root.rotation.x, target.x, 7, dt);
