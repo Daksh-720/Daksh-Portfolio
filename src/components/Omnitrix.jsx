@@ -13,12 +13,19 @@ export default function Omnitrix() {
     if (!host) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x111715);
+    scene.background = new THREE.Color('#000000');
+    scene.backgroundColor = '#000000';
     const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
     camera.position.set(5.6, 4.4, 8.6);
     camera.lookAt(0, 0.05, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setClearColor(0x000000, 1);
+    renderer.domElement.style.background = '#000000';
+    renderer.domElement.style.display = 'block';
+    renderer.domElement.style.width = '100%';
+    renderer.domElement.style.height = '100%';
+
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -47,7 +54,7 @@ export default function Omnitrix() {
     const fill = new THREE.DirectionalLight(0xe1e9e5, 1.4);
     fill.position.set(6, -1, 5);
     scene.add(fill);
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: 0x111715, roughness: 0.87 }));
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: 0x000000 }));
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -2.04;
     ground.receiveShadow = true;
