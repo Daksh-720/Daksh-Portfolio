@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import gsap from 'gsap';
 
+
 // A single-file, fully procedural Omnitrix. Drag to turn; tap the dial to raise/lower it;
 // tap the small green button to change the selected glow.
 export default function Omnitrix({ isVisible = true }) {
@@ -68,6 +69,39 @@ export default function Omnitrix({ isVisible = true }) {
     const root = new THREE.Group();
     root.rotation.set(-0.04, -0.27, -0.07);
     scene.add(root);
+    // Floating particles, same motion as ParticleField but living in this scene.
+    const pCount = 120;
+    const pBase = new Float32Array(pCount * 3);
+    const pPos = new Float32Array(pCount * 3);
+    for (let i = 0; i < pCount; i++) {
+      const i3 = i * 3;
+      pBase[i3] = (Math.random() - 0.5) * 22;
+      pBase[i3 + 1] = (Math.random() - 0.5) * 14;
+      pBase[i3 + 2] = (Math.random() - 0.5) * 10;
+    }
+    pPos.set(pBase);
+    const pGeo = new THREE.BufferGeometry();
+    pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+    
+    // Soft round dot instead of square points.
+    const dotCanvas = document.createElement('canvas');
+    dotCanvas.width = dotCanvas.height = 64;
+    const dctx = dotCanvas.getContext('2d');
+    const grad = dctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.35, 'rgba(255,255,255,0.7)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    dctx.fillStyle = grad;
+    dctx.fillRect(0, 0, 64, 64);
+    const dotTexture = new THREE.CanvasTexture(dotCanvas);
+    
+    const pMat = new THREE.PointsMaterial({
+      color: 0x39ff14, size: 0.24, map: dotTexture, transparent: true,
+      depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true, toneMapped: false,
+    });
+    const particles = new THREE.Points(pGeo, pMat);
+    particles.frustumCulled = false;
+    scene.add(particles); // added to the scene, not root, so dragging the watch doesn't spin them
 
     // Fine molded grain, not flat plastic. Bump is made locally so the model stays self-contained.
     const grainCanvas = document.createElement('canvas');
@@ -462,6 +496,13 @@ export default function Omnitrix({ isVisible = true }) {
       previousTime = now;
       root.rotation.x = THREE.MathUtils.damp(root.rotation.x, target.x, 7, dt);
       root.rotation.y = THREE.MathUtils.damp(root.rotation.y, target.y, 7, dt);
+      const time = now / 1000;
+      for (let i = 0; i < pCount; i++) {
+        const i3 = i * 3;
+        pPos[i3] = pBase[i3] + Math.cos(time * 0.3 + i) * 0.4;
+        pPos[i3 + 1] = pBase[i3 + 1] + Math.sin(time * 0.5 + i) * 0.5;
+      }
+      pGeo.attributes.position.needsUpdate = true;
       renderer.render(scene, camera);
     }
     animate(performance.now());
@@ -475,6 +516,7 @@ export default function Omnitrix({ isVisible = true }) {
       scene.traverse(o => { if (o.isMesh) o.geometry.dispose(); });
       materials.forEach(m => m.dispose()); grainTexture.dispose(); ground.material.dispose(); env.dispose(); pmrem.dispose();
       renderer.dispose(); renderer.domElement.remove();
+      pGeo.dispose(); pMat.dispose(); dotTexture.dispose();
     };
   }, []);
 
